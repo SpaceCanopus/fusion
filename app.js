@@ -9,6 +9,11 @@ let renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Create raycaster and mouse vector for detecting clicks
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let interactiveObjects = []; 
+
 // 2. Create Protons (Red Spheres) with Random Positions and Velocities, restricted to 2D
 let particles = [];
 let flyingParticles = [];  // List to track positrons and neutrinos
@@ -42,6 +47,81 @@ function createProton(position = null, velocity = null) {
 
     scene.add(proton);
     return proton;
+}
+
+// Create the "Reset" button with text on it
+function createResetButton() {
+    // Create a canvas element for the button text
+    let canvas = document.createElement('canvas');
+    let context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 128;
+
+    // Draw the text "Reset" on the canvas
+    context.fillStyle = '#00ff00';
+    context.fillRect(0, 0, canvas.width, canvas.height); // Green background
+    context.font = '40px Arial';
+    context.fillStyle = '#000000';
+    context.fillText('Reset', 75, 80);  // Position text in the center
+
+    // Create a texture from the canvas
+    let texture = new THREE.CanvasTexture(canvas);
+
+    // Create a plane geometry for the button and apply the texture
+    let buttonGeometry = new THREE.PlaneGeometry(8, 3);  // Button size
+    let buttonMaterial = new THREE.MeshBasicMaterial({ map: texture });  // Use the texture with text
+    let resetButton = new THREE.Mesh(buttonGeometry, buttonMaterial);
+
+    resetButton.position.set(0, -20, 0);  // Position button near bottom of screen
+    scene.add(resetButton);
+    interactiveObjects.push(resetButton);  // Add button to interactive objects list for raycasting
+    return resetButton;
+}
+
+// Create the reset button
+let resetButton = createResetButton();
+
+// 5. Handle Mouse Click Events
+window.addEventListener('click', (event) => {
+    // Convert mouse coordinates to normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Raycast to check for intersections with interactive objects (the reset button)
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects(interactiveObjects);
+
+    // If the reset button is clicked, reset the simulation
+    if (intersects.length > 0 && intersects[0].object === resetButton) {
+        resetSimulation();
+    }
+});
+
+// 6. Reset function to restart the simulation
+function resetSimulation() {
+    // Remove all particles and flying particles from the scene
+    particles.forEach(particle => {
+        scene.remove(particle);
+    });
+    flyingParticles.forEach(particle => {
+        scene.remove(particle);
+    });
+
+    // Clear the particles array
+    particles = [];
+    flyingParticles = [];
+
+    // Recreate the protons with random positions and velocities
+    for (let i = 0; i < 40; i++) {
+        let proton = createProton();
+        proton.position.set(Math.random() * 40 - 20, Math.random() * 40 - 20, 0);
+        proton.velocity = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, 0);
+        proton.isDeuterium = false;
+        proton.isHelium3 = false;
+        proton.isHelium4 = false;
+        scene.add(proton);
+        particles.push(proton);
+    }
 }
 
 // 4. Create Positron (Blue Sphere) and Neutrino (Green Sphere) when Deuterium or Helium-3 is Formed
@@ -396,6 +476,3 @@ function animate() {
 }
 
 animate();
-
-
-
